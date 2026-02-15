@@ -30,7 +30,7 @@ body {
   position:absolute; bottom:10px; left:50%;
   transform:translateX(-50%);
   width:60px; height:60px;
-  display:none; object-fit:contain;
+  display:none;
 }
 .collected-animation {
   animation: collect 0.3s ease;
@@ -81,7 +81,7 @@ body {
 #controls button {
   width:80px; height:60px;
   font-size:36px; border-radius:10px;
-  background:rgba(255,255,255,.4);
+  background:rgba(255,255,255,.5);
   border:2px solid rgba(255,255,255,.7);
 }
 #leaderboard { padding:10px; text-align:center; }
@@ -123,6 +123,7 @@ body {
   </div>
 
   <img id="player" src="character.png">
+
   <div id="controls">
     <button id="left-btn">←</button>
     <button id="right-btn">→</button>
@@ -139,7 +140,6 @@ body {
 <audio id="collect-sound" src="collect.mp3"></audio>
 <audio id="lose-sound" src="lose.mp3"></audio>
 
-<!-- ========== FIREBASE v12 ========== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp }
@@ -158,7 +158,6 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const leaderboardRef = collection(db, "leaderboard");
 
-/* ---------- GAME LOGIC ---------- */
 const board = document.getElementById("game-board");
 const player = document.getElementById("player");
 const scoreEl = document.getElementById("score");
@@ -170,6 +169,9 @@ const winMessage = document.getElementById("win-message");
 const leaderboardList = document.getElementById("leaderboard-list");
 const collectSound = document.getElementById("collect-sound");
 const loseSound = document.getElementById("lose-sound");
+
+const leftBtn = document.getElementById("left-btn");
+const rightBtn = document.getElementById("right-btn");
 
 let score = 0, time = 60, speed = 6;
 let isGameOver = false, frenzy = false;
@@ -211,6 +213,7 @@ function movePlayer(dx){
   player.style.left = Math.max(0, Math.min(max, x)) + "px";
 }
 
+/* لوحة المفاتيح */
 document.addEventListener("keydown",e=>{
   if(e.key==="ArrowLeft") move.left=true;
   if(e.key==="ArrowRight") move.right=true;
@@ -219,11 +222,16 @@ document.addEventListener("keyup",e=>{
   if(e.key==="ArrowLeft") move.left=false;
   if(e.key==="ArrowRight") move.right=false;
 });
+
+/* أزرار الشاشة */
 ["mousedown","touchstart"].forEach(ev=>{
-  left-btn?.addEventListener(ev,()=>move.left=true);
-  right-btn?.addEventListener(ev,()=>move.right=true);
+  leftBtn.addEventListener(ev,e=>{ e.preventDefault(); move.left=true; });
+  rightBtn.addEventListener(ev,e=>{ e.preventDefault(); move.right=true; });
 });
-["mouseup","touchend"].forEach(()=>{move.left=false;move.right=false});
+["mouseup","mouseleave","touchend","touchcancel"].forEach(ev=>{
+  leftBtn.addEventListener(ev,()=>move.left=false);
+  rightBtn.addEventListener(ev,()=>move.right=false);
+});
 
 function createShape(){
   const s = document.createElement("div");
@@ -257,14 +265,18 @@ function collide(a,b){
 }
 
 async function winGame(){
-  isGameOver=true; clearInterval(shapeInterval); clearInterval(timerInterval);
+  isGameOver=true;
+  clearInterval(shapeInterval);
+  clearInterval(timerInterval);
   await saveScore();
   winMessage.textContent=`مبروك! نقاطك ${score}`;
   winScreen.style.display="flex";
 }
 
 async function loseGame(){
-  isGameOver=true; clearInterval(shapeInterval); clearInterval(timerInterval);
+  isGameOver=true;
+  clearInterval(shapeInterval);
+  clearInterval(timerInterval);
   loseSound.play();
   await saveScore();
   gameOver.style.display="flex";
@@ -273,7 +285,8 @@ async function loseGame(){
 async function saveScore(){
   await addDoc(leaderboardRef,{
     name: document.getElementById("player-name").value || "لاعب",
-    score, createdAt: serverTimestamp()
+    score,
+    createdAt: serverTimestamp()
   });
   loadLeaderboard();
 }
