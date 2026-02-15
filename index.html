@@ -24,6 +24,7 @@ button { cursor: pointer; font-family: inherit; }
   position: relative; /* For welcome message positioning */
   display: flex; justify-content: space-between; align-items: center;
   padding: 10px 15px; font-size: 20px; background: #fff;
+  overflow: hidden; /* Prevents welcome message from showing outside */
 }
 #pause-btn {
   font-size: 24px; background: none; border: none; padding: 0 10px;
@@ -174,6 +175,7 @@ const leaderboardRef = collection(db, "leaderboard");
 /* ---------- DOM ELEMENTS ---------- */
 const gameContainer = document.getElementById("game-container");
 const leaderboardPage = document.getElementById("leaderboard-page");
+const board = document.getElementById("game-board");
 const player = document.getElementById("player");
 const scoreEl = document.getElementById("score");
 const timerEl = document.getElementById("timer");
@@ -189,6 +191,7 @@ const viewLeaderboardBtn = document.getElementById("view-leaderboard-btn");
 const instaUser = document.getElementById("insta-user");
 const validationError = document.getElementById("validation-error");
 const welcomeMessage = document.getElementById("welcome-message");
+
 
 /* ---------- GAME STATE ---------- */
 const INITIAL_TIME = 150; // 2.5 minutes
@@ -230,12 +233,12 @@ startBtn.onclick = () => {
 
     // Show welcome message
     welcomeMessage.textContent = `hi ${user}`;
-    welcomeMessage.style.opacity = 1;
     welcomeMessage.style.top = '50%';
+    welcomeMessage.style.opacity = 1;
     setTimeout(() => {
-        welcomeMessage.style.opacity = 0;
         welcomeMessage.style.top = '110%';
-    }, 3000);
+        welcomeMessage.style.opacity = 0;
+    }, 2500);
 
     startScreen.style.display = "none";
     startGame();
@@ -255,8 +258,8 @@ function startGame() {
     player.style.display = "block";
     scoreEl.textContent = `النقاط: 0`;
     timerEl.classList.remove('time-warning');
-    updateTimer(); // Display initial time correctly
     time++; // Offset the first tick which happens immediately
+    updateTimer(); 
 
     // Start game mechanics
     resumeGame();
@@ -300,49 +303,47 @@ function updateTimer() {
 }
 
 function gameLoop() {
-    if (isGameOver || isPaused) {
-      gameLoopId = requestAnimationFrame(gameLoop);
-      return;
-    }
-    if (move.left) movePlayer(-speed);
-    if (move.right) movePlayer(speed);
+    if (!isGameOver && !isPaused) {
+        if (move.left) movePlayer(-speed);
+        if (move.right) movePlayer(speed);
 
-    for (let i = fallingShapes.length - 1; i >= 0; i--) {
-        const shapeData = fallingShapes[i];
-        shapeData.y += shapeData.fallSpeed;
-        shapeData.element.style.top = shapeData.y + "px";
+        for (let i = fallingShapes.length - 1; i >= 0; i--) {
+            const shapeData = fallingShapes[i];
+            shapeData.y += shapeData.fallSpeed;
+            shapeData.element.style.top = shapeData.y + "px";
 
-        if (collide(player, shapeData.element)) {
-            if (shapeData.element.classList.contains("circle")) {
-                score++;
-                scoreEl.textContent = `النقاط: ${score}`;
-                collectSound.currentTime = 0; collectSound.play();
-                player.classList.add("collected-animation");
-                setTimeout(() => player.classList.remove("collected-animation"), 300);
+            if (collide(player, shapeData.element)) {
+                if (shapeData.element.classList.contains("circle")) {
+                    score++;
+                    scoreEl.textContent = `النقاط: ${score}`;
+                    collectSound.currentTime = 0; collectSound.play();
+                    player.classList.add("collected-animation");
+                    setTimeout(() => player.classList.remove("collected-animation"), 300);
+                    shapeData.element.remove();
+                    fallingShapes.splice(i, 1);
+                } else {
+                    loseGame();
+                }
+            } else if (shapeData.y > board.offsetHeight) {
                 shapeData.element.remove();
                 fallingShapes.splice(i, 1);
-            } else {
-                loseGame();
             }
-        } else if (shapeData.y > player.offsetTop) {
-            shapeData.element.remove();
-            fallingShapes.splice(i, 1);
         }
     }
-    gameLoopId = requestAnimationFrame(gameLoop);
+    requestAnimationFrame(gameLoop);
 }
 
 function movePlayer(dx) {
     const x = player.offsetLeft + dx;
-    const max = game-board.offsetWidth - player.offsetWidth;
+    const max = board.offsetWidth - player.offsetWidth;
     player.style.left = Math.max(0, Math.min(max, x)) + "px";
 }
 
 function createShape() {
     const s = document.createElement("div");
     s.className = "shape " + (Math.random() < 0.7 ? "circle" : "triangle");
-    s.style.left = Math.random() * (game-board.offsetWidth - 40) + "px";
-    game-board.appendChild(s);
+    s.style.left = Math.random() * (board.offsetWidth - 40) + "px";
+    board.appendChild(s);
     
     fallingShapes.push({
         element: s,
@@ -427,17 +428,17 @@ async function loadLeaderboard() {
 }
 
 /* ---------- INITIAL APP LOAD ---------- */
-function initializeApp() {
+function init() {
     const savedUser = localStorage.getItem('instaUser');
     if (savedUser) {
         instaUser.value = savedUser;
         instaUser.dispatchEvent(new Event('input')); // Trigger validation
     }
     showGamePage();
-    gameLoop(); // Start the game engine
+    gameLoop(); // Start the game engine loop
 }
 
-initializeApp();
+init();
 </script>
 
 </body>
