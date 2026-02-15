@@ -21,29 +21,11 @@ button { cursor: pointer; font-family: inherit; }
 
 /* --- Game UI --- */
 #info-bar {
-  position: relative; /* For welcome message positioning */
   display: flex; justify-content: space-between; align-items: center;
   padding: 10px 15px; font-size: 20px; background: #fff;
-  overflow: hidden; /* Prevents welcome message from showing outside */
 }
 #pause-btn {
   font-size: 24px; background: none; border: none; padding: 0 10px;
-}
-#welcome-message {
-    position: absolute;
-    left: 50%;
-    top: 110%; /* Start below */
-    transform: translateX(-50%);
-    background: #28a745;
-    color: white;
-    padding: 5px 15px;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: bold;
-    z-index: 20;
-    opacity: 0;
-    transition: opacity 0.5s ease, top 0.5s ease;
-    white-space: nowrap;
 }
 #game-board {
   position: relative; flex-grow: 1;
@@ -123,7 +105,6 @@ button { cursor: pointer; font-family: inherit; }
     <button id="pause-btn">⏸</button>
     <div id="score">النقاط: 0</div>
     <div id="timer">الوقت: 02:30</div>
-    <div id="welcome-message"></div>
   </div>
   <div id="game-board">
     <div id="start-screen" class="overlay">
@@ -190,13 +171,11 @@ const pauseBtn = document.getElementById("pause-btn");
 const viewLeaderboardBtn = document.getElementById("view-leaderboard-btn");
 const instaUser = document.getElementById("insta-user");
 const validationError = document.getElementById("validation-error");
-const welcomeMessage = document.getElementById("welcome-message");
-
 
 /* ---------- GAME STATE ---------- */
 const INITIAL_TIME = 150; // 2.5 minutes
 let score = 0, time = INITIAL_TIME, speed = 6;
-let isGameOver = true, isPaused = true, frenzy = false;
+let isGameOver = false, isPaused = false, frenzy = false;
 let move = { left: false, right: false };
 let shapeInterval, timerInterval, gameLoopId;
 let fallingShapes = [];
@@ -213,7 +192,8 @@ function showLeaderboardPage() {
 }
 viewLeaderboardBtn.onclick = showLeaderboardPage;
 
-/* ---------- USERNAME VALIDATION & STORAGE ---------- */
+
+/* ---------- USERNAME VALIDATION ---------- */
 const instaRegex = /^@[a-zA-Z0-9_]{1,30}$/;
 instaUser.addEventListener('input', () => {
     const user = instaUser.value;
@@ -228,41 +208,18 @@ instaUser.addEventListener('input', () => {
 
 /* ---------- GAME CORE ---------- */
 startBtn.onclick = () => {
-    const user = instaUser.value;
-    localStorage.setItem('instaUser', user); // Save username
-
-    // Show welcome message
-    welcomeMessage.textContent = `hi ${user}`;
-    welcomeMessage.style.top = '50%';
-    welcomeMessage.style.opacity = 1;
-    setTimeout(() => {
-        welcomeMessage.style.top = '110%';
-        welcomeMessage.style.opacity = 0;
-    }, 2500);
-
     startScreen.style.display = "none";
+    player.style.display = "block";
     startGame();
 };
 
 function startGame() {
-    // Reset game state for a fresh start
-    isGameOver = false;
     isPaused = false;
-    score = 0;
-    time = INITIAL_TIME;
-    frenzy = false;
-    fallingShapes.forEach(shape => shape.element.remove());
-    fallingShapes = [];
-
-    // Update UI
-    player.style.display = "block";
-    scoreEl.textContent = `النقاط: 0`;
-    timerEl.classList.remove('time-warning');
-    time++; // Offset the first tick which happens immediately
-    updateTimer(); 
-
-    // Start game mechanics
+    isGameOver = true; // Prevent movement before start
+    setTimeout(() => { isGameOver = false; }, 100); // Allow movement shortly after start
+    
     resumeGame();
+    gameLoop();
 }
 
 function pauseGame() {
@@ -303,34 +260,42 @@ function updateTimer() {
 }
 
 function gameLoop() {
-    if (!isGameOver && !isPaused) {
-        if (move.left) movePlayer(-speed);
-        if (move.right) movePlayer(speed);
+    if (isGameOver || isPaused) {
+      gameLoopId = requestAnimationFrame(gameLoop);
+      return;
+    }
+    if (move.left) movePlayer(-speed);
+    if (move.right) movePlayer(speed);
 
-        for (let i = fallingShapes.length - 1; i >= 0; i--) {
-            const shapeData = fallingShapes[i];
-            shapeData.y += shapeData.fallSpeed;
-            shapeData.element.style.top = shapeData.y + "px";
+    // Update falling shapes
+    for (let i = fallingShapes.length - 1; i >= 0; i--) {
+        const shapeData = fallingShapes[i];
+        shapeData.y += shapeData.fallSpeed;
+        shapeData.element.style.top = shapeData.y + "px";
 
-            if (collide(player, shapeData.element)) {
-                if (shapeData.element.classList.contains("circle")) {
-                    score++;
-                    scoreEl.textContent = `النقاط: ${score}`;
-                    collectSound.currentTime = 0; collectSound.play();
-                    player.classList.add("collected-animation");
-                    setTimeout(() => player.classList.remove("collected-animation"), 300);
-                    shapeData.element.remove();
-                    fallingShapes.splice(i, 1);
-                } else {
-                    loseGame();
-                }
-            } else if (shapeData.y > board.offsetHeight) {
+        // Collision check
+        if (collide(player, shapeData.element)) {
+            if (shapeData.element.classList.contains("circle")) {
+                score++;
+                scoreEl.textContent = `النقاط: ${score}`;
+                collectSound.currentTime = 0;
+                collectSound.play();
+                player.classList.add("collected-animation");
+                setTimeout(() => player.classList.remove("collected-animation"), 300);
                 shapeData.element.remove();
                 fallingShapes.splice(i, 1);
+            } else {
+                loseGame();
             }
         }
+        // Remove if off-screen
+        else if (shapeData.y > board.offsetHeight) {
+            shapeData.element.remove();
+            fallingShapes.splice(i, 1);
+        }
     }
-    requestAnimationFrame(gameLoop);
+
+    gameLoopId = requestAnimationFrame(gameLoop);
 }
 
 function movePlayer(dx) {
@@ -361,11 +326,12 @@ function collide(a, b) {
 async function endGame(status) {
     if (isGameOver) return;
     isGameOver = true;
-    isPaused = true;
-    clearInterval(timerInterval);
-    clearInterval(shapeInterval);
+    pauseGame(); // Stop all intervals
+    cancelAnimationFrame(gameLoopId);
     
-    if (status === 'loss') loseSound.play();
+    if (status === 'loss') {
+        loseSound.play();
+    }
     
     await saveScore(status);
     showLeaderboardPage();
@@ -375,8 +341,15 @@ const winGame = () => endGame('win');
 const loseGame = () => endGame('loss');
 
 /* ---------- CONTROLS ---------- */
-document.addEventListener("keydown", e => { if (e.key === "ArrowLeft") move.left = true; if (e.key === "ArrowRight") move.right = true; });
-document.addEventListener("keyup", e => { if (e.key === "ArrowLeft") move.left = false; if (e.key === "ArrowRight") move.right = false; });
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") move.left = true;
+    if (e.key === "ArrowRight") move.right = true;
+});
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowLeft") move.left = false;
+    if (e.key === "ArrowRight") move.right = false;
+});
+// Touch & Mouse
 leftBtn.addEventListener("mousedown", () => move.left = true);
 leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); move.left = true; });
 rightBtn.addEventListener("mousedown", () => move.right = true);
@@ -390,8 +363,16 @@ async function saveScore(status) {
     const timeSpent = INITIAL_TIME - time;
     if (score > 0) {
         try {
-            await addDoc(leaderboardRef, { name: playerName, score, timeSpent, status, createdAt: serverTimestamp() });
-        } catch (error) { console.error("Error saving score: ", error); }
+            await addDoc(leaderboardRef, {
+                name: playerName,
+                score,
+                timeSpent,
+                status,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Error saving score: ", error);
+        }
     }
 }
 
@@ -406,7 +387,7 @@ async function loadLeaderboard() {
             return;
         }
 
-        leaderboardList.innerHTML = "";
+        leaderboardList.innerHTML = ""; // Clear loading text
         snap.forEach(d => {
             const data = d.data();
             const li = document.createElement("li");
@@ -427,18 +408,8 @@ async function loadLeaderboard() {
     }
 }
 
-/* ---------- INITIAL APP LOAD ---------- */
-function init() {
-    const savedUser = localStorage.getItem('instaUser');
-    if (savedUser) {
-        instaUser.value = savedUser;
-        instaUser.dispatchEvent(new Event('input')); // Trigger validation
-    }
-    showGamePage();
-    gameLoop(); // Start the game engine loop
-}
-
-init();
+// Initial setup
+showGamePage();
 </script>
 
 </body>
