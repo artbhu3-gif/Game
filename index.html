@@ -301,29 +301,3 @@ loadLeaderboard();
 
 </body>
 </html>
-        createdAt: serverTimestamp()
-    });
-  }
-  loadLeaderboard();
-}
-
-async function loadLeaderboard(){
-  leaderboardList.innerHTML="";
-  const q=query(leaderboardRef,orderBy("score","desc"),limit(3));
-  const snap=await getDocs(q);
-  if (snap.empty) {
-    leaderboardList.innerHTML = "<li>لا توجد نقاط بعد</li>";
-    return;
-  }
-  snap.forEach(d=>{
-    const li=document.createElement("li");
-    li.innerHTML=`<span>${d.data().name}</span><strong>${d.data().score}</strong>`;
-    leaderboardList.appendChild(li);
-  });
-}
-
-loadLeaderboard();
-</script>
-
-</body>
-</html>
