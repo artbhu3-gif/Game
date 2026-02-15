@@ -119,8 +119,9 @@ body {
   </div>
   <img id="player" src="character.png">
   <div id="controls">
-    <button id="left-btn">←</button>
+    <!-- BUTTONS SWAPPED HERE -->
     <button id="right-btn">→</button>
+    <button id="left-btn">←</button>
   </div>
 </div>
 <div id="leaderboard">
@@ -213,7 +214,7 @@ document.addEventListener("keyup",e=>{
   if(e.key==="ArrowRight") move.right=false;
 });
 
-// --- CORRECTED MOUSE & TOUCH CONTROLS ---
+// Mouse & Touch controls
 // Start movement
 leftBtn.addEventListener("mousedown", () => move.left = true);
 leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); move.left = true; });
@@ -223,7 +224,6 @@ rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); move.right 
 // Stop movement when released anywhere
 document.addEventListener("mouseup", () => { move.left = false; move.right = false; });
 document.addEventListener("touchend", () => { move.left = false; move.right = false; });
-// --- END OF CORRECTION ---
 
 function createShape(){
   const s = document.createElement("div");
@@ -271,10 +271,36 @@ async function loseGame(){
 
 async function saveScore(){
   const playerName = document.getElementById("player-name").value || "لاعب";
-  if (score > 0) { // Optional: only save if score is positive
+  if (score > 0) {
     await addDoc(leaderboardRef,{
         name: playerName,
-        score, 
+        score,
+        createdAt: serverTimestamp()
+    });
+  }
+  loadLeaderboard();
+}
+
+async function loadLeaderboard(){
+  leaderboardList.innerHTML="";
+  const q=query(leaderboardRef,orderBy("score","desc"),limit(3));
+  const snap=await getDocs(q);
+  if (snap.empty) {
+    leaderboardList.innerHTML = "<li>لا توجد نقاط بعد</li>";
+    return;
+  }
+  snap.forEach(d=>{
+    const li=document.createElement("li");
+    li.innerHTML=`<span>${d.data().name}</span><strong>${d.data().score}</strong>`;
+    leaderboardList.appendChild(li);
+  });
+}
+
+loadLeaderboard();
+</script>
+
+</body>
+</html>
         createdAt: serverTimestamp()
     });
   }
