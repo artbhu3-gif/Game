@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>لعبة جمع الدوائر</title>
-
 <style>
 html, body { height:100%; margin:0; overflow:hidden; }
 body {
@@ -30,7 +29,7 @@ body {
   position:absolute; bottom:10px; left:50%;
   transform:translateX(-50%);
   width:60px; height:60px;
-  display:none;
+  display:none; object-fit:contain;
 }
 .collected-animation {
   animation: collect 0.3s ease;
@@ -77,11 +76,12 @@ body {
   position:absolute; bottom:20px; width:100%;
   display:flex; justify-content:space-between;
   padding:0 10%;
+  box-sizing: border-box; /* Added for better padding behavior */
 }
 #controls button {
   width:80px; height:60px;
   font-size:36px; border-radius:10px;
-  background:rgba(255,255,255,.5);
+  background:rgba(255,255,255,.4);
   border:2px solid rgba(255,255,255,.7);
 }
 #leaderboard { padding:10px; text-align:center; }
@@ -96,55 +96,47 @@ body {
 #leaderboard li:nth-child(3){background:#cd7f32}
 </style>
 </head>
-
 <body>
-<div id="game-container">
 
+<div id="game-container">
 <div id="info-bar">
   <div id="score">النقاط: 0</div>
   <div id="timer">الوقت: 60</div>
 </div>
-
 <div id="game-board">
   <div id="start-screen" class="overlay">
     <h1>لعبة جمع الدوائر</h1>
     <input id="player-name" placeholder="اكتب اسمك" maxlength="15">
     <button id="start-btn">ابدأ اللعبة</button>
   </div>
-
   <div id="win-screen" class="overlay" style="display:none">
     <h1 id="win-message"></h1>
     <button onclick="location.reload()">العب مجددًا</button>
   </div>
-
   <div id="game-over" class="overlay" style="display:none">
     <h1>انتهت اللعبة!</h1>
     <button onclick="location.reload()">إعادة</button>
   </div>
-
   <img id="player" src="character.png">
-
   <div id="controls">
     <button id="left-btn">←</button>
     <button id="right-btn">→</button>
   </div>
 </div>
-
 <div id="leaderboard">
   <h3>🏆 أعلى 3 نقاط</h3>
   <ol id="leaderboard-list"><li>جار التحميل...</li></ol>
 </div>
-
 </div>
 
 <audio id="collect-sound" src="collect.mp3"></audio>
 <audio id="lose-sound" src="lose.mp3"></audio>
 
+<!-- ========== FIREBASE v12 ========== -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
 import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp }
 from "https://www.gstatic.com/firebasejs/12.9.0/firebase-firestore.js";
-
 const firebaseConfig = {
   apiKey: "AIzaSyDsJ6fm4SFNLnRuHj-b80L0BweGVNkoiIM",
   authDomain: "game-21f55.firebaseapp.com",
@@ -153,11 +145,10 @@ const firebaseConfig = {
   messagingSenderId: "88852711134",
   appId: "1:88852711134:web:c504445d3d800c3e13244f"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const leaderboardRef = collection(db, "leaderboard");
-
+/* ---------- GAME LOGIC ---------- */
 const board = document.getElementById("game-board");
 const player = document.getElementById("player");
 const scoreEl = document.getElementById("score");
@@ -169,7 +160,6 @@ const winMessage = document.getElementById("win-message");
 const leaderboardList = document.getElementById("leaderboard-list");
 const collectSound = document.getElementById("collect-sound");
 const loseSound = document.getElementById("lose-sound");
-
 const leftBtn = document.getElementById("left-btn");
 const rightBtn = document.getElementById("right-btn");
 
@@ -213,7 +203,7 @@ function movePlayer(dx){
   player.style.left = Math.max(0, Math.min(max, x)) + "px";
 }
 
-/* لوحة المفاتيح */
+// Keyboard controls
 document.addEventListener("keydown",e=>{
   if(e.key==="ArrowLeft") move.left=true;
   if(e.key==="ArrowRight") move.right=true;
@@ -223,22 +213,23 @@ document.addEventListener("keyup",e=>{
   if(e.key==="ArrowRight") move.right=false;
 });
 
-/* أزرار الشاشة */
-["mousedown","touchstart"].forEach(ev=>{
-  leftBtn.addEventListener(ev,e=>{ e.preventDefault(); move.left=true; });
-  rightBtn.addEventListener(ev,e=>{ e.preventDefault(); move.right=true; });
-});
-["mouseup","mouseleave","touchend","touchcancel"].forEach(ev=>{
-  leftBtn.addEventListener(ev,()=>move.left=false);
-  rightBtn.addEventListener(ev,()=>move.right=false);
-});
+// --- CORRECTED MOUSE & TOUCH CONTROLS ---
+// Start movement
+leftBtn.addEventListener("mousedown", () => move.left = true);
+leftBtn.addEventListener("touchstart", (e) => { e.preventDefault(); move.left = true; });
+rightBtn.addEventListener("mousedown", () => move.right = true);
+rightBtn.addEventListener("touchstart", (e) => { e.preventDefault(); move.right = true; });
+
+// Stop movement when released anywhere
+document.addEventListener("mouseup", () => { move.left = false; move.right = false; });
+document.addEventListener("touchend", () => { move.left = false; move.right = false; });
+// --- END OF CORRECTION ---
 
 function createShape(){
   const s = document.createElement("div");
   s.className = "shape " + (Math.random()<0.7?"circle":"triangle");
   s.style.left = Math.random()*(board.offsetWidth-40)+"px";
   board.appendChild(s);
-
   let y=-50, fallSpeed=(Math.random()*3+2)*(frenzy?1.6:1);
   function fall(){
     if(isGameOver){s.remove();return;}
@@ -265,29 +256,28 @@ function collide(a,b){
 }
 
 async function winGame(){
-  isGameOver=true;
-  clearInterval(shapeInterval);
-  clearInterval(timerInterval);
+  isGameOver=true; clearInterval(shapeInterval); clearInterval(timerInterval);
   await saveScore();
   winMessage.textContent=`مبروك! نقاطك ${score}`;
   winScreen.style.display="flex";
 }
 
 async function loseGame(){
-  isGameOver=true;
-  clearInterval(shapeInterval);
-  clearInterval(timerInterval);
+  isGameOver=true; clearInterval(shapeInterval); clearInterval(timerInterval);
   loseSound.play();
   await saveScore();
   gameOver.style.display="flex";
 }
 
 async function saveScore(){
-  await addDoc(leaderboardRef,{
-    name: document.getElementById("player-name").value || "لاعب",
-    score,
-    createdAt: serverTimestamp()
-  });
+  const playerName = document.getElementById("player-name").value || "لاعب";
+  if (score > 0) { // Optional: only save if score is positive
+    await addDoc(leaderboardRef,{
+        name: playerName,
+        score, 
+        createdAt: serverTimestamp()
+    });
+  }
   loadLeaderboard();
 }
 
@@ -295,13 +285,19 @@ async function loadLeaderboard(){
   leaderboardList.innerHTML="";
   const q=query(leaderboardRef,orderBy("score","desc"),limit(3));
   const snap=await getDocs(q);
+  if (snap.empty) {
+    leaderboardList.innerHTML = "<li>لا توجد نقاط بعد</li>";
+    return;
+  }
   snap.forEach(d=>{
     const li=document.createElement("li");
     li.innerHTML=`<span>${d.data().name}</span><strong>${d.data().score}</strong>`;
     leaderboardList.appendChild(li);
   });
 }
+
 loadLeaderboard();
 </script>
+
 </body>
 </html>
