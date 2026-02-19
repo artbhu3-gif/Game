@@ -7,7 +7,6 @@
     <style>
         /* --- General Styles --- */
         html, body { height: 100%; margin: 0; overflow: hidden; font-family: 'Cairo', Arial, sans-serif; }
-        /* MODIFIED: Changed body to stack ad and game vertically */
         body {
             display: flex;
             flex-direction: column;
@@ -18,27 +17,25 @@
         }
         button { cursor: pointer; font-family: inherit; }
 
-        /* START: New style for Ad container */
+        /* --- Ad Banner Container --- */
         #ad-container {
             width: 100%;
-            max-width: 450px; /* Match the game width */
+            max-width: 450px;
             text-align: center;
-            background: #f0f0f0; /* Match page background */
+            background: #f0f0f0;
             padding: 5px 0;
-            flex-shrink: 0; /* Prevent shrinking */
+            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 70px; /* Minimum height for a typical banner like 468x60 */
+            min-height: 70px;
         }
-        /* END: New style for Ad container */
 
         /* --- Containers --- */
         .page {
             width: 100%; max-width: 450px;
-            /* MODIFIED: Changed height to flex-grow to fill available space */
             flex-grow: 1;
-            position: relative; /* Added for stability */
+            position: relative;
             background: #f0f0f0; display: none; flex-direction: column;
             box-shadow: 0 0 20px rgba(0,0,0,.5);
         }
@@ -52,18 +49,10 @@
 
         /* --- Shapes & Animations --- */
         .shape { position: absolute; top: -50px; }
-        .circle {
-            width: 40px;
-            height: 40px;
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
+        .circle { width: 40px; height: 40px; background-size: contain; background-position: center; background-repeat: no-repeat; }
         .triangle { width: 40px; height: 40px; background: url('obstacle.png') center/contain no-repeat; }
-        @keyframes simple-collect {
-          50% { opacity: 0.6; }
-        }
         .collected-animation { animation: simple-collect 0.2s ease-out; }
+        @keyframes simple-collect { 50% { opacity: 0.6; } }
 
         /* --- Overlays --- */
         .overlay {
@@ -76,6 +65,41 @@
         #start-screen .button-group button { font-size: 18px; padding: 12px 20px; margin-top: 0; }
         #game-over-overlay { display: none; }
         #game-over-overlay h2 { font-size: 32px; margin-bottom: 10px; }
+
+        /* --- START: New Styles for Ad Popup --- */
+        #ad-popup-overlay {
+            position: fixed; /* Use fixed to cover the whole screen */
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000; /* Must be higher than other overlays */
+            display: none; /* Hidden by default */
+            justify-content: center;
+            align-items: center;
+        }
+        #ad-popup-content {
+            background: #fff;
+            padding: 20px;
+            padding-top: 40px; /* Space for close button */
+            border-radius: 10px;
+            position: relative;
+            width: 90%;
+            max-width: 400px; /* Adjust as needed */
+            text-align: center;
+        }
+        #close-ad-btn {
+            position: absolute;
+            top: 5px;
+            left: 10px; /* Changed to left for LTR context */
+            background: transparent;
+            border: none;
+            font-size: 28px;
+            font-weight: bold;
+            color: #555;
+            cursor: pointer;
+            padding: 0 5px;
+            margin: 0;
+        }
+        /* --- END: New Styles for Ad Popup --- */
 
         /* --- Input Fields --- */
         .input-field { padding: 10px; font-size: 18px; border-radius: 8px; border: 2px solid #ddd; margin-bottom: 10px; text-align: center; direction: ltr; width: 80%; }
@@ -103,17 +127,12 @@
 </head>
 <body>
 
-<!-- START: A-ADS BANNER CONTAINER -->
+<!-- Top Ad Banner Container -->
 <div id="ad-container">
-    <!-- BEGIN AADS AD UNIT 2428022 -->
     <div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998;">
-        <iframe data-aa='2428022' src='//acceptable.a-ads.com/2428022/?size=Adaptive'
-                style='border:0; padding:0; width:70%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
+        <iframe data-aa='2428022' src='//acceptable.a-ads.com/2428022/?size=Adaptive' style='border:0; padding:0; width:70%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
     </div>
-    <!-- END AADS AD UNIT 2428022 -->
 </div>
-<!-- END: A-ADS BANNER CONTAINER -->
-
 
 <!-- Page 1: Game -->
 <div id="game-container" class="page">
@@ -152,6 +171,19 @@
     <ol id="leaderboard-list"><li>يتم التحميل...</li></ol>
     <button class="back-btn">العب مرة أخرى</button>
 </div>
+
+<!-- START: New Ad Popup Container -->
+<div id="ad-popup-overlay">
+    <div id="ad-popup-content">
+        <button id="close-ad-btn">×</button>
+        <!-- BEGIN AADS AD UNIT 2428030 -->
+        <div id="frame" style="width: 100%;margin: auto;position: relative; z-index: 99998;">
+            <iframe data-aa='2428030' src='//acceptable.a-ads.com/2428030/?size=Adaptive' style='border:0; padding:0; width:70%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
+        </div>
+        <!-- END AADS AD UNIT 2428030 -->
+    </div>
+</div>
+<!-- END: New Ad Popup Container -->
 
 <audio id="collect-sound" src="collect.mp3"></audio>
 <audio id="lose-sound" src="lose.mp3"></audio>
@@ -198,6 +230,10 @@
     const validationError = document.getElementById("validation-error");
     const backBtns = document.querySelectorAll('.back-btn');
 
+    // NEW: Get Ad Popup elements
+    const adPopupOverlay = document.getElementById("ad-popup-overlay");
+    const closeAdBtn = document.getElementById("close-ad-btn");
+
     const INITIAL_TIME = 600; 
     let score = 0, time = 0, speed = 6, speedModifier = 1.0;
     let isGameOver = true, isPaused = false, frenzy = false;
@@ -222,6 +258,14 @@
             startNewGameRound();
         };
     });
+
+    // NEW: Add event listener for the popup close button
+    closeAdBtn.onclick = () => {
+        adPopupOverlay.style.display = 'none'; // Hide the ad
+        gameOverOverlay.style.display = 'none'; // Hide the game over screen
+        loadLeaderboard();
+        showPage(leaderboardPage); // Show the leaderboard
+    };
 
     const instaRegex = /^@[a-zA-Z0-9_]{1,30}$/;
     const idRegex = /^[a-zA-Z0-9]{6,}$/;
@@ -341,22 +385,19 @@
         const minutes = Math.floor(time / 60).toString().padStart(2, '0');
         const seconds = (time % 60).toString().padStart(2, '0');
         timerEl.textContent = `الوقت: ${minutes}:${seconds}`;
-
         const minutesPassed = Math.floor((INITIAL_TIME - time) / 60);
         speedModifier = 1.0 + (minutesPassed * 0.2);
-
         if (!frenzy && time > 0 && time <= (INITIAL_TIME / 2)) {
             frenzy = true;
             timerEl.classList.add("time-warning");
             clearInterval(shapeInterval);
             shapeInterval = setInterval(createShape, 450);
         }
-        if (time <= 0) {
-            winGame();
-        }
+        if (time <= 0) winGame();
         time--;
     }
 
+    // MODIFIED: endGame function to show popup
     function endGame(status) {
         if (isGameOver) return;
         isGameOver = true;
@@ -366,16 +407,16 @@
         if (status === 'loss') {
             loseSound.play();
             finalScoreText.textContent = `نقاطك: ${score}`;
-            gameOverOverlay.style.display = 'flex';
+            gameOverOverlay.style.display = 'flex'; // Show game over screen
+            adPopupOverlay.style.display = 'flex'; // Show ad popup
+        } else { // On win, go to leaderboard directly
+             setTimeout(() => {
+                loadLeaderboard();
+                showPage(leaderboardPage);
+            }, 500);
         }
         
         saveScore();
-        
-        setTimeout(() => {
-            gameOverOverlay.style.display = 'none';
-            loadLeaderboard();
-            showPage(leaderboardPage);
-        }, status === 'loss' ? 3000 : 0);
     }
 
     const loseGame = () => endGame('loss');
@@ -385,9 +426,7 @@
         if (!currentUser) return;
         if (score > (currentUser.highScore || 0)) {
             const userDocRef = doc(db, "users", currentUser.username);
-            await updateDoc(userDocRef, {
-                highScore: score
-            });
+            await updateDoc(userDocRef, { highScore: score });
             currentUser.highScore = score;
         }
     }
@@ -397,7 +436,6 @@
         try {
             const q = query(usersRef, orderBy("highScore", "desc"), limit(10));
             const snap = await getDocs(q);
-            
             if (snap.empty) {
                 leaderboardList.innerHTML = "<li>لا توجد نقاط بعد، كن أول الأبطال!</li>";
                 return;
@@ -407,10 +445,7 @@
                 const data = d.data();
                 if(data.highScore > 0) {
                     const li = document.createElement("li");
-                    li.innerHTML = `
-                        <span class="name">${data.username}</span>
-                        <strong class="score">${data.highScore}</strong>
-                    `;
+                    li.innerHTML = `<span class="name">${data.username}</span><strong class="score">${data.highScore}</strong>`;
                     leaderboardList.appendChild(li);
                 }
             });
@@ -420,99 +455,30 @@
         }
     }
     
-    function gameLoop() { if (isGameOver || isPaused) { gameLoopId = requestAnimationFrame(gameLoop); return; } if (move.left) movePlayer(-speed); if (move.right) movePlayer(speed); for (let i = fallingShapes.length - 1; i >= 0; i--) { const shapeData = fallingShapes[i]; shapeData.y += shapeData.fallSpeed; shapeData.element.style.top = shapeData.y + "px"; if (collide(player, shapeData.element)) { if (shapeData.element.classList.contains("circle")) { score++; scoreEl.textContent = `النقاط: ${score}`; collectSound.currentTime = 0; collectSound.play(); player.classList.add("collected-animation"); setTimeout(() => player.classList.remove("collected-animation"), 200); shapeData.element.remove(); fallingShapes.splice(i, 1); } else { loseGame(); } } else if (shapeData.y > board.offsetHeight) { shapeData.element.remove(); fallingShapes.splice(i, 1); } } gameLoopId = requestAnimationFrame(gameLoop); }
-    function movePlayer(dx) { const x = player.offsetLeft + dx; const max = board.offsetWidth - player.offsetWidth; player.style.left = Math.max(0, Math.min(max, x)) + "px"; }
-    
-    function createShape() {
-        const s = document.createElement("div");
-        
-        if (Math.random() < 0.7) { 
-            s.className = "shape circle";
-            const randomImage = collectibleImages[Math.floor(Math.random() * collectibleImages.length)];
-            s.style.backgroundImage = `url('${randomImage}')`;
-        } else {
-            s.className = "shape triangle";
-        }
-
-        s.style.left = Math.random() * (board.offsetWidth - 40) + "px";
-        board.appendChild(s);
-        
-        const baseFallSpeed = (Math.random() * 3 + 2);
-        const finalFallSpeed = baseFallSpeed * speedModifier * (frenzy ? 1.6 : 1);
-        fallingShapes.push({ element: s, y: -50, fallSpeed: finalFallSpeed });
-    }
-
-    function collide(a, b) { const A = a.getBoundingClientRect(); const B = b.getBoundingClientRect(); return !(A.right < B.left || A.left > B.right || A.bottom < B.top || A.top > B.bottom); }
-    document.addEventListener("keydown", e => { if (e.key === "ArrowLeft") move.left = true; if (e.key === "ArrowRight") move.right = true; });
-    document.addEventListener("keyup", e => { if (e.key === "ArrowLeft") move.left = false; if (e.key === "ArrowRight") move.right = false; });
-    document.querySelector("#left-btn").addEventListener("touchstart", (e) => { e.preventDefault(); move.left = true; });
-    document.querySelector("#right-btn").addEventListener("touchstart", (e) => { e.preventDefault(); move.right = true; });
-    document.addEventListener("touchend", () => { move.left = false; move.right = false; });
-    document.addEventListener("mousedown", (e) => { if (e.target.id === 'left-btn') move.left = true; if (e.target.id === 'right-btn') move.right = true; });
-    document.addEventListener("mouseup", () => { move.left = false; move.right = false; });
-
-    function showWelcomeMessage(message) {
-        const div = document.createElement('div');
-        div.textContent = message;
-        Object.assign(div.style, { position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', padding: '10px 25px', background: 'rgba(40, 167, 69, 0.9)', color: 'white', borderRadius: '10px', zIndex: '1000', fontSize: '18px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' });
-        document.body.appendChild(div);
-        setTimeout(() => { div.style.transition = 'opacity 0.5s'; div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 2500);
-    }
-    
-    function loadSavedUser() {
-        const savedUserStr = localStorage.getItem('savedMariomaUser');
-        if (savedUserStr) {
-            try {
-                const savedUser = JSON.parse(savedUserStr);
-                instaUser.value = savedUser.u;
-                privateIdInput.value = savedUser.p;
-                validateInputs();
-            } catch (e) { localStorage.removeItem('savedMariomaUser'); }
-        }
-    }
+    function gameLoop(){if(isGameOver||isPaused){gameLoopId=requestAnimationFrame(gameLoop);return}if(move.left)movePlayer(-speed);if(move.right)movePlayer(speed);for(let i=fallingShapes.length-1;i>=0;i--){const shapeData=fallingShapes[i];shapeData.y+=shapeData.fallSpeed;shapeData.element.style.top=shapeData.y+"px";if(collide(player,shapeData.element)){if(shapeData.element.classList.contains("circle")){score++;scoreEl.textContent=`النقاط: ${score}`;collectSound.currentTime=0;collectSound.play();player.classList.add("collected-animation");setTimeout(()=>player.classList.remove("collected-animation"),200);shapeData.element.remove();fallingShapes.splice(i,1)}else{loseGame()}}else if(shapeData.y>board.offsetHeight){shapeData.element.remove();fallingShapes.splice(i,1)}}gameLoopId=requestAnimationFrame(gameLoop)}
+    function movePlayer(dx){const x=player.offsetLeft+dx;const max=board.offsetWidth-player.offsetWidth;player.style.left=Math.max(0,Math.min(max,x))+"px"}
+    function collide(a,b){const A=a.getBoundingClientRect();const B=b.getBoundingClientRect();return!(A.right<B.left||A.left>B.right||A.bottom<B.top||A.top>B.bottom)}
+    document.addEventListener("keydown",e=>{if(e.key==="ArrowLeft")move.left=true;if(e.key==="ArrowRight")move.right=true});document.addEventListener("keyup",e=>{if(e.key==="ArrowLeft")move.left=false;if(e.key==="ArrowRight")move.right=false});document.querySelector("#left-btn").addEventListener("touchstart",e=>{e.preventDefault();move.left=true});document.querySelector("#right-btn").addEventListener("touchstart",e=>{e.preventDefault();move.right=true});document.addEventListener("touchend",()=>{move.left=false;move.right=false});document.addEventListener("mousedown",e=>{if(e.target.id==='left-btn')move.left=true;if(e.target.id==='right-btn')move.right=true});document.addEventListener("mouseup",()=>{move.left=false;move.right=false});
+    function showWelcomeMessage(message){const div=document.createElement('div');div.textContent=message;Object.assign(div.style,{position:'fixed',top:'20px',left:'50%',transform:'translateX(-50%)',padding:'10px 25px',background:'rgba(40,167,69,0.9)',color:'white',borderRadius:'10px',zIndex:'1000',fontSize:'18px',fontWeight:'bold',boxShadow:'0 4px 10px rgba(0,0,0,0.2)'});document.body.appendChild(div);setTimeout(()=>{div.style.transition='opacity 0.5s';div.style.opacity='0';setTimeout(()=>div.remove(),500)},2500)}
+    function loadSavedUser(){const savedUserStr=localStorage.getItem('savedMariomaUser');if(savedUserStr){try{const savedUser=JSON.parse(savedUserStr);instaUser.value=savedUser.u;privateIdInput.value=savedUser.p;validateInputs()}catch(e){localStorage.removeItem('savedMariomaUser')}}}
 
     // Initial setup
     showPage(gameContainer);
     loadSavedUser();
 </script>
+
+<!-- Script to refresh top ad banner -->
 <script>
-    // This script will manually refresh the A-ADS iframe every 20 seconds.
     document.addEventListener("DOMContentLoaded", function() {
-        // Find the iframe using its unique 'data-aa' attribute.
         const adIframe = document.querySelector("iframe[data-aa='2428022']");
-
         if (adIframe) {
-            // Get the original source URL of the iframe.
             const originalSrc = adIframe.src;
-
-            // Set an interval to run the refresh function every 20,000 milliseconds (20 seconds).
             setInterval(function() {
-                console.log("Refreshing A-ADS ad...");
-                // Reload the iframe. Adding a random number prevents caching issues.
                 adIframe.src = originalSrc + '&cb=' + Math.random();
-            }, 20000); // 20000 ms = 20 seconds
+            }, 20000);
         }
     });
 </script>
-<script>
-    // This script will manually refresh the A-ADS iframe every 20 seconds.
-    document.addEventListener("DOMContentLoaded", function() {
-        // Find the iframe using its unique 'data-aa' attribute.
-        const adIframe = document.querySelector("iframe[data-aa='2428022']");
 
-        if (adIframe) {
-            // Get the original source URL of the iframe.
-            const originalSrc = adIframe.src;
-
-            // Set an interval to run the refresh function every 20,000 milliseconds (20 seconds).
-            setInterval(function() {
-                console.log("Refreshing A-ADS ad...");
-                // Reload the iframe. Adding a random number prevents caching issues.
-                adIframe.src = originalSrc + '&cb=' + Math.random();
-            }, 20000); // 20000 ms = 20 seconds
-        }
-    });
-</script>
-    
 </body>
 </html>
