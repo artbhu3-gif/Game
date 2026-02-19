@@ -494,6 +494,25 @@
         }
     });
 </script>
+<script>
+    // This script will manually refresh the A-ADS iframe every 20 seconds.
+    document.addEventListener("DOMContentLoaded", function() {
+        // Find the iframe using its unique 'data-aa' attribute.
+        const adIframe = document.querySelector("iframe[data-aa='2428022']");
+
+        if (adIframe) {
+            // Get the original source URL of the iframe.
+            const originalSrc = adIframe.src;
+
+            // Set an interval to run the refresh function every 20,000 milliseconds (20 seconds).
+            setInterval(function() {
+                console.log("Refreshing A-ADS ad...");
+                // Reload the iframe. Adding a random number prevents caching issues.
+                adIframe.src = originalSrc + '&cb=' + Math.random();
+            }, 20000); // 20000 ms = 20 seconds
+        }
+    });
+</script>
     
 </body>
 </html>
